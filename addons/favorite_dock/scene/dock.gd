@@ -84,8 +84,8 @@ func _c(i : TreeItem, p : PackedStringArray) -> void:
 
 func _exit_tree() -> void:
 	if !fav_tree:return
-	if fav_tree.draw.is_connected(_update):
-		fav_tree.draw.disconnect(_update)
+	if fav_tree.draw.is_connected(_def_update):
+		fav_tree.draw.disconnect(_def_update)
 
 ## Add recursive folders/files
 func _explorer(path : String, buffer : PackedStringArray) -> void:
