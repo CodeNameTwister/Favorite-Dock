@@ -1,5 +1,13 @@
 @tool
 extends EditorPlugin
+#{
+	#"type": "plugin",
+	#"codeRepository": "https://github.com/CodeNameTwister",
+	#"description": "Favorite dock addon for godot 4",
+	#"license": "https://spdx.org/licenses/MIT",
+	#"name": "Twister",
+	#"version": "1.0.0"
+#}
 var dock : Control = null
 
 func _enter_tree() -> void:
