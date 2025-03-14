@@ -9,6 +9,7 @@ Displays all favorites in a separate dock.
 * Favorite folders are displayed with all subfolders and files.
 * Replicate colors on folders/files setted.
 * Update the favorite list on request.
+* Menu RMB File system command (Right click)
 
 # Example
 
