@@ -101,8 +101,6 @@ func _exit_tree() -> void:
 		dock.folder_color_changed.disconnect(_def_update)
 	if fs.filesystem_changed.is_connected(_def_update):
 		fs.filesystem_changed.disconnect(_def_update)
-	if fav_tree.item_collapsed.is_connected(_on_collap):
-		fav_tree.item_collapsed.disconnect(_on_collap)
 	_col_cache.clear()
 
 ## Tree callback
