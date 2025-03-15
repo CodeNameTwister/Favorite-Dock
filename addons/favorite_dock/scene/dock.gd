@@ -14,6 +14,8 @@ var finish_update : bool = true
 var _SHA256 : String = ""
 var fav_tree : Tree = null
 var _chk : float = 0.0
+var _col_cache : Dictionary = {}
+
 const FAV_FOLDER : String = "res://.godot/editor/favorites"
 
 func clear() -> void:
@@ -99,6 +101,17 @@ func _exit_tree() -> void:
 		dock.folder_color_changed.disconnect(_def_update)
 	if fs.filesystem_changed.is_connected(_def_update):
 		fs.filesystem_changed.disconnect(_def_update)
+	if fav_tree.item_collapsed.is_connected(_on_collap):
+		fav_tree.item_collapsed.disconnect(_on_collap)
+	_col_cache.clear()
+
+## Tree callback
+func _on_collap(i : TreeItem) -> void:
+	var v : Variant = i.get_metadata(0)
+	if v is String:
+		if v.is_empty():return
+		if _col_cache.has(v):
+			_col_cache[v][1] = i.collapsed
 
 ## Add recursive folders/files
 func _explorer(path : String, buffer : PackedStringArray) -> void:
@@ -128,12 +141,19 @@ func _update(force : bool = false) -> void:
 			clear()
 			var buffer : PackedStringArray = []
 			var root : TreeItem = fav_tree.get_root()
+			if !tree.item_collapsed.is_connected(_on_collap):
+				tree.item_collapsed.connect(_on_collap)
 			if root != null and root.get_first_child() != null:
 				_c(root.get_first_child().get_first_child(), buffer)
+			for k : Variant in _col_cache.keys():
+				_col_cache[k][0] = false
 			for b : String in buffer:
 				if !FileAccess.file_exists(b) and DirAccess.dir_exists_absolute(b):
 					_explorer(b, buffer)
 				add_item(b)#, false)
+			for x : String in _col_cache.keys():
+				if _col_cache[x][0] == false:
+					_col_cache.erase(x)
 	finish_update = true
 
 #Update use physic process!
@@ -213,7 +233,7 @@ func _ready() -> void:
 	#Refresh button
 	$TittleBox/Button.pressed.connect(_update.bind(true))
 
-	_update()
+	_update.call_deferred()
 
 	#Util when used another type of dock slot
 	visibility_changed.connect(_on_visibility_changed)
@@ -253,12 +273,20 @@ func add_item(path : String) -> void: #, save : bool = true) -> void:
 	var root : TreeItem = tree.get_root()
 
 	if root == null:
+		var rp : String = "res://"
 		var base_gui : Control = EditorInterface.get_base_control()
 		tree.theme = base_gui.theme
 		root = tree.create_item(root)
-		root.set_text(0, "res://")
+		root.set_text(0, rp)
 		root.set_icon(0, _get_icon(""))
 		root.set_icon_modulate(0, Color.LIGHT_BLUE)
+
+		if _col_cache.has(rp):
+			root.collapsed = _col_cache[rp][1]
+		else:
+			_col_cache[rp] = [true, false]
+			root.collapsed = false
+		_col_cache[rp][0] = true
 
 	var tmp : TreeItem = root.get_first_child()
 	var tmp_path : String = "res://"
@@ -283,6 +311,14 @@ func add_item(path : String) -> void: #, save : bool = true) -> void:
 			if tmp_path.get_extension() == "" and !tmp_path.ends_with("."):
 				tmp.set_icon_modulate(0, Color.LIGHT_BLUE)
 			tmp.set_custom_bg_color(0, base_color)
+			tmp.set_metadata(0, tmp_path)
+
+			if _col_cache.has(tmp_path):
+				tmp.collapsed = _col_cache[tmp_path][1]
+			else:
+				_col_cache[tmp_path] = [true, true]
+				tmp.collapsed = true
+			_col_cache[tmp_path][0] = true
 			if !FileAccess.file_exists(tmp_path):
 				var c : Color = base_color
 				c.a = 0.8
