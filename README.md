@@ -13,15 +13,19 @@ Displays all favorites in a separate dock.
 * Persistence of collapse folders.
 * Global Scope Filter.
 
-# Example
+# Previews
 
 ### File System
 
 ![alt text](https://github.com/CodeNameTwister/Favorite-Dock/blob/main/images/file0.png)
 
-### Favorite Dock
+### Favorite Dock #1
 
 ![alt text](https://github.com/CodeNameTwister/Favorite-Dock/blob/main/images/file1.png)
+
+### File System with Favorite Dock as separated
+
+![alt text](https://github.com/CodeNameTwister/Favorite-Dock/blob/main/images/file2.png)
 
 Copyrights (c) CodeNameTwister. See [LICENSE.md](LICENSE.md) for details.
 
