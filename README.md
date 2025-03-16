@@ -14,6 +14,7 @@ Displays all favorites in a separate dock.
 * Global Scope Filter.
 
 # Previews
+Youtube: https://youtu.be/b0Bxgp0OIJo
 
 ### File System
 
