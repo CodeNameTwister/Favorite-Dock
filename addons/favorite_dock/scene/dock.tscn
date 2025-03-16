@@ -1,9 +1,10 @@
-[gd_scene load_steps=6 format=3 uid="uid://dsmdx6w7j5au2"]
+[gd_scene load_steps=7 format=3 uid="uid://dsmdx6w7j5au2"]
 
 [ext_resource type="Script" uid="uid://bem746yrt8r5v" path="res://addons/favorite_dock/scene/dock.gd" id="1_oeqba"]
-[ext_resource type="Texture2D" uid="uid://d1urqpptkfwbq" path="res://addons/favorite_dock/scene/icons8-refresh-50.png" id="2_cotbt"]
+[ext_resource type="Texture2D" uid="uid://d1urqpptkfwbq" path="res://addons/favorite_dock/scene/refresh.png" id="2_cotbt"]
+[ext_resource type="Texture2D" uid="uid://c7p8wjx35bmk5" path="res://addons/favorite_dock/scene/filter.svg" id="2_sjsly"]
 
-[sub_resource type="Image" id="Image_ht6w4"]
+[sub_resource type="Image" id="Image_s81up"]
 data = {
 "data": PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 224, 224, 224, 40, 229, 229, 229, 39, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 225, 225, 225, 183, 224, 224, 224, 180, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 225, 225, 225, 75, 224, 224, 224, 255, 224, 224, 224, 255, 227, 227, 227, 71, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 230, 230, 230, 10, 224, 224, 224, 65, 225, 225, 225, 125, 224, 224, 224, 226, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 225, 225, 225, 225, 125, 224, 224, 224, 65, 230, 230, 230, 10, 0, 0, 0, 0, 230, 230, 230, 10, 224, 224, 224, 210, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 209, 230, 230, 230, 10, 0, 0, 0, 0, 227, 227, 227, 27, 225, 225, 225, 223, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 221, 226, 226, 226, 26, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 225, 225, 225, 34, 224, 224, 224, 240, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 239, 224, 224, 224, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 224, 224, 224, 227, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 255, 224, 224, 224, 229, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 224, 224, 224, 246, 224, 224, 224, 255, 224, 224, 224, 236, 224, 224, 224, 236, 224, 224, 224, 255, 224, 224, 224, 250, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 230, 230, 230, 10, 224, 224, 224, 230, 224, 224, 224, 115, 234, 234, 234, 12, 232, 232, 232, 11, 224, 224, 224, 112, 224, 224, 224, 226, 224, 224, 224, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 4, 255, 255, 255, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 5, 255, 255, 255, 4, 0, 0, 0, 0, 0, 0, 0, 0),
 "format": "RGBA8",
@@ -13,7 +14,7 @@ data = {
 }
 
 [sub_resource type="ImageTexture" id="ImageTexture_sjsly"]
-image = SubResource("Image_ht6w4")
+image = SubResource("Image_s81up")
 
 [sub_resource type="LabelSettings" id="LabelSettings_oeqba"]
 font_size = 12
@@ -49,10 +50,18 @@ label_settings = SubResource("LabelSettings_oeqba")
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Button" type="Button" parent="TittleBox"]
+[node name="Filter" type="Button" parent="TittleBox"]
 custom_minimum_size = Vector2(24, 20)
 layout_mode = 2
 size_flags_horizontal = 10
+icon = ExtResource("2_sjsly")
+icon_alignment = 1
+expand_icon = true
+
+[node name="Refresh" type="Button" parent="TittleBox"]
+custom_minimum_size = Vector2(24, 20)
+layout_mode = 2
+size_flags_horizontal = 8
 tooltip_text = "Update"
 icon = ExtResource("2_cotbt")
 icon_alignment = 1

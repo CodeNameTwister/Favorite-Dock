@@ -6,15 +6,17 @@ extends Control
 	#"description": "Favorite dock addon for godot 4",
 	#"license": "https://spdx.org/licenses/MIT",
 	#"name": "Twister",
-	#"version": "1.0.0"
+	#"version": "1.1.2"
 #}
 @export var tree : Tree
 
 var finish_update : bool = true
-var _SHA256 : String = ""
 var fav_tree : Tree = null
+var _SHA256 : String = ""
 var _chk : float = 0.0
 var _col_cache : Dictionary = {}
+var _dbg_path : String = ""
+var _filter_by_global_scope : bool = true
 
 const FAV_FOLDER : String = "res://.godot/editor/favorites"
 
@@ -25,11 +27,7 @@ func clear() -> void:
 func _select() -> void:
 	var item : TreeItem = tree.get_selected()
 	if item:
-		var path : String = item.get_text(0)
-		var parent : TreeItem = item.get_parent()
-		while parent != null:
-			path = parent.get_text(0).path_join(path)
-			parent = parent.get_parent()
+		var path : String = item.get_metadata(0)
 
 		if FileAccess.file_exists(path):
 			EditorInterface.select_file(path)
@@ -37,7 +35,18 @@ func _select() -> void:
 		elif DirAccess.dir_exists_absolute(path):
 			EditorInterface.select_file(path)
 		else:
-			push_error("Error on selection: ", path)
+			if _dbg_path == path:
+				push_warning("Error on selection: ", path, " > not exist file/folder")
+			else:
+				_dbg_path = path
+				var fl : String = (get_script() as Script).resource_path.get_basename()
+				if !fl.is_empty():
+					fl = fl.get_slice("/", max(0, fl.get_slice_count("/") - 3))
+					if fl.length() > 2:
+						print("[{0}] Inconsistent file/folder > {1}. refreshing list...".format([fl.capitalize(), path.get_file()]))
+				_def_update()
+			return
+		_dbg_path = ""
 
 ## Get icon type using path as reference
 func _get_icon(path : String) -> Texture:
@@ -89,19 +98,29 @@ func _c(i : TreeItem, p : PackedStringArray) -> void:
 func _exit_tree() -> void:
 	var fs : EditorFileSystem = EditorInterface.get_resource_filesystem()
 	var dock : FileSystemDock = EditorInterface.get_file_system_dock()
-	if !dock.files_moved.is_connected(_c0):
-		dock.files_moved.disconnect(_c0)
-	if dock.file_removed.is_connected(_c1):
-		dock.file_removed.disconnect(_c1)
-	if dock.folder_moved.is_connected(_c0):
-		dock.folder_moved.disconnect(_c0)
-	if dock.folder_removed.is_connected(_c1):
-		dock.folder_removed.disconnect(_c1)
+	var vp : Viewport = Engine.get_main_loop().root
+	if dock.files_moved.is_connected(_moved_callback):
+		dock.files_moved.disconnect(_moved_callback)
+	if dock.file_removed.is_connected(_remove_callback):
+		dock.file_removed.disconnect(_remove_callback)
+	if dock.folder_moved.is_connected(_moved_callback):
+		dock.folder_moved.disconnect(_moved_callback)
+	if dock.folder_removed.is_connected(_remove_callback):
+		dock.folder_removed.disconnect(_remove_callback)
 	if dock.folder_color_changed.is_connected(_def_update):
 		dock.folder_color_changed.disconnect(_def_update)
 	if fs.filesystem_changed.is_connected(_def_update):
 		fs.filesystem_changed.disconnect(_def_update)
+	if fav_tree.item_collapsed.is_connected(_on_collap):
+		fav_tree.item_collapsed.disconnect(_on_collap)
+	if vp.focus_entered.is_connected(_on_wnd):
+		vp.focus_entered.disconnect(_on_wnd)
+	if vp.focus_exited.is_connected(_out_wnd):
+		vp.focus_exited.disconnect(_out_wnd)
+	_save_cfg()
 	_col_cache.clear()
+
+
 
 ## Tree callback
 func _on_collap(i : TreeItem) -> void:
@@ -143,20 +162,61 @@ func _update(force : bool = false) -> void:
 				tree.item_collapsed.connect(_on_collap)
 			if root != null and root.get_first_child() != null:
 				_c(root.get_first_child().get_first_child(), buffer)
-			for k : Variant in _col_cache.keys():
-				_col_cache[k][0] = false
-			for b : String in buffer:
-				if !FileAccess.file_exists(b) and DirAccess.dir_exists_absolute(b):
-					_explorer(b, buffer)
-				add_item(b)#, false)
+			if _filter_by_global_scope:
+				for b : String in buffer:
+					if !FileAccess.file_exists(b) and DirAccess.dir_exists_absolute(b):
+						_explorer(b, buffer)
+					if _filter_by_global_scope:
+						add_item(b)#, false)
+			else:
+				var tree_root : TreeItem = tree.get_root()
+				if tree_root == null:
+					tree_root = _create_root()
+				var data : Dictionary = ProjectSettings.get_setting("file_customization/folder_colors",{})
+				var base_color : Color = Color.SKY_BLUE
+				for new_path : String in buffer:
+					if data.has(new_path):
+						base_color = Color.from_string(data[new_path], Color.SKY_BLUE)
+					base_color.a = 0.15
+					#region root_item
+					var new_tree : TreeItem = tree_root.create_child()
+					var parsed_path : String = new_path.trim_suffix("/")
+					var fname : String = parsed_path.get_file()
+					new_tree.set_text(0, fname)
+					new_tree.set_metadata(0, parsed_path)
+					new_tree.set_icon(0, _get_icon(parsed_path))
+					new_tree.set_custom_bg_color(0, base_color) #FIXME: COLOR
+					if _col_cache.has(parsed_path):
+						new_tree.collapsed = _col_cache[parsed_path][1]
+					else:
+						_col_cache[parsed_path] = [true, true]
+						new_tree.collapsed = true
+					_col_cache[parsed_path][0] = true
+					var current_color : Color = base_color
+					if data.has(new_path):
+						current_color = Color.from_string(data[new_path], Color.SKY_BLUE)
+						if current_color != Color.SKY_BLUE:
+							var nw : Color = current_color.lightened(0.25)
+							current_color = nw
+							nw.a = 0.85
+							new_tree.set_icon_modulate(0, nw) #FIXME: COLOR
+					else:
+						var b : Color = base_color
+						b.a = 1.0
+						new_tree.set_icon_modulate(0, b) #FIXME: COLOR
+					current_color.a = min(current_color.a, 0.25)
+					#endregion
+					add_item_scoped(parsed_path, new_tree, data, current_color)
 			for x : String in _col_cache.keys():
 				if _col_cache[x][0] == false:
 					_col_cache.erase(x)
-	finish_update = true
+	set_deferred(&"finish_update", true)
 
 #Update use physic process!
 func _on_visibility_changed() -> void:
 	if visible:
+		var vp : Viewport = get_tree().root
+		set_physics_process(vp != null and vp.has_focus())
 		_update(true)
 
 func _def_update() -> void:
@@ -187,33 +247,93 @@ func _get_popup_commands(path : String = "") -> Popup:
 			return pops[0]
 	return null
 
+func _rmb_menu_init() -> void:
+	if fav_tree:
+		var pops : Array[Popup] = []
+		var fs : FileSystemDock = EditorInterface.get_file_system_dock()
+		if fs.get_child_count() > 0:
+			var expect : int = 2
+			for p : Node in fs.get_children():
+				if p is Popup:
+					pops.append(p)
+					expect -= 1
+					if expect < 1:break
+		var res : TreeItem = fav_tree.get_root().get_first_child().get_next()
+		fav_tree.set_selected(res,0)
+		fav_tree.item_mouse_selected.emit(Vector2.ZERO, 2)
+		for p : Popup in pops:
+			if p.visible:
+				p.hide()
+
 ## RMB Tree command
 func _item_mouse_selected(mouse_position: Vector2i, mouse_button_index: int) -> void:
 	if mouse_button_index == 2:
 		var item : TreeItem = tree.get_selected()
 		if item == null:return
-		var path : String = ""
-		while item != null:
-			path = item.get_text(0).path_join(path)
-			item = item.get_parent()
+		var path : String = item.get_metadata(0)
+
 		path = path.trim_suffix("/")
 		if DirAccess.dir_exists_absolute(path) or FileAccess.file_exists(path):
 			EditorInterface.select_file(path)
+			var vp : Viewport = get_viewport()
+			if vp:
+				mouse_position = vp.get_mouse_position()
 			var popup : Popup = _get_popup_commands(path)
-			popup.position = (mouse_position) + Vector2i(64, 128)
+			var half : Vector2i = (popup.size/2)
+			popup.position = (mouse_position - half - Vector2i(0, half.y/2))
 			popup.show()
 
+func _on_change_filter() -> void:
+	_filter_by_global_scope = !_filter_by_global_scope
+	_update(true)
+	_update_gui()
+
+func _update_gui() -> void:
+	if _filter_by_global_scope:
+		$TittleBox/Filter.modulate = Color.WHITE
+	else:
+		$TittleBox/Filter.modulate = Color.WEB_GREEN
+
+func _on_wnd() -> void:set_physics_process(true)
+func _out_wnd() -> void:set_physics_process(false)
+
+func _load_cfg() -> void:
+	if FileAccess.file_exists("user://editor/favorite_dock.cfg"):
+		var cfg : ConfigFile = ConfigFile.new()
+		cfg.load("user://editor/favorite_dock.cfg")
+		_col_cache = cfg.get_value("cfg", "col", {})
+		_filter_by_global_scope = cfg.get_value("cfg", "filter", true)
+		if _col_cache.size() > 0:
+			var check : Variant = _col_cache.values()[0]
+			if (check is Array) and check.size() > 1:
+				for k : Variant in _col_cache.keys():
+					_col_cache[k][0] = false
+		cfg = null
+
+func _save_cfg() -> void:
+	if !DirAccess.dir_exists_absolute("user://editor/"):
+		DirAccess.make_dir_absolute("user://editor/")
+	var cfg : ConfigFile = ConfigFile.new()
+	cfg.set_value("cfg", "col", _col_cache)
+	cfg.get_value("cfg", "filter", _filter_by_global_scope)
+	cfg.save("user://editor/favorite_dock.cfg")
+	cfg = null
+
+
 func _ready() -> void:
+	set_physics_process(false)
 	var dock : FileSystemDock = EditorInterface.get_file_system_dock()
 	_n(dock)
 	if !fav_tree:
 		push_error("[ERROR] Can not find favorites tree!")
 		return
 
-	_get_popup_commands()
+	_rmb_menu_init()
 
 	if tree == null:
 		tree = find_child("Tree")
+
+	_load_cfg()
 
 	tree.allow_reselect = true
 	tree.allow_rmb_select = true
@@ -229,7 +349,8 @@ func _ready() -> void:
 			tittle_icon.texture = new_text
 
 	#Refresh button
-	$TittleBox/Button.pressed.connect(_update.bind(true))
+	$TittleBox/Filter.pressed.connect(_on_change_filter)
+	$TittleBox/Refresh.pressed.connect(_update.bind(true))
 
 	_update.call_deferred()
 
@@ -237,17 +358,30 @@ func _ready() -> void:
 	visibility_changed.connect(_on_visibility_changed)
 
 	var fs : EditorFileSystem = EditorInterface.get_resource_filesystem()
-	dock.files_moved.connect(_c0)
-	dock.file_removed.connect(_c1)
-	dock.folder_moved.connect(_c0)
-	dock.folder_removed.connect(_c0)
+	dock.files_moved.connect(_moved_callback)
+	dock.file_removed.connect(_remove_callback)
+	dock.folder_moved.connect(_moved_callback)
+	dock.folder_removed.connect(_remove_callback)
 	dock.folder_color_changed.connect(_def_update)
 	fs.filesystem_changed.connect(_def_update)
 
-func _c0(_a : String, _b : String ) -> void:
+	var vp : Viewport = Engine.get_main_loop().root
+	vp.focus_entered.connect(_on_wnd)
+	vp.focus_exited.connect(_out_wnd)
+	set_physics_process(has_focus())
+
+	_update_gui()
+
+func _moved_callback(a : String, b : String ) -> void:
+	if a != b:
+		if _col_cache.has(a):
+			_col_cache[b] = _col_cache[a]
+			_col_cache.erase(a)
 	_def_update()
 
-func _c1(_a : String) -> void:
+func _remove_callback(path : String) -> void:
+	if _col_cache.has(path):
+		_col_cache.erase(path)
 	_def_update()
 
 ## Get current user config data path
@@ -258,6 +392,31 @@ func _get_user_path() -> String:
 	else:
 		save_path = save_path.get_slice("/", min(save_path.get_slice_count("/"),3))
 	return "user://editor/{0}.cfg".format([save_path])
+
+func _create_root() -> TreeItem:
+	var rp : String = "res://"
+	var base_gui : Control = EditorInterface.get_base_control()
+	var root : TreeItem = null
+	tree.theme = base_gui.theme
+	root = tree.create_item(root)
+	if _filter_by_global_scope:
+		root.set_text(0, rp)
+		root.set_metadata(0, rp)
+		root.set_icon(0, _get_icon(""))
+		root.set_icon_modulate(0, Color.LIGHT_BLUE)
+	else:
+		var fav : TreeItem = fav_tree.get_root().get_first_child()
+		if fav:
+			var dicn :  Texture2D = base_gui.get_theme_icon("", "EditorIcons")
+			var ficn :  Texture2D = base_gui.get_theme_icon("Favorites", "EditorIcons")
+			var txt : String = fav.get_text(0)
+			root.set_text(0, txt)
+			root.set_metadata(0, "")
+			if dicn == ficn:
+				base_gui.get_theme_icon("Folder", "EditorIcons")
+				root.set_icon_modulate(0, Color.LIGHT_BLUE)
+			root.set_icon(0, ficn)
+	return root
 
 ## Make tree by item
 func add_item(path : String) -> void: #, save : bool = true) -> void:
@@ -271,26 +430,19 @@ func add_item(path : String) -> void: #, save : bool = true) -> void:
 	var root : TreeItem = tree.get_root()
 
 	if root == null:
-		var rp : String = "res://"
-		var base_gui : Control = EditorInterface.get_base_control()
-		tree.theme = base_gui.theme
-		root = tree.create_item(root)
-		root.set_text(0, rp)
-		root.set_icon(0, _get_icon(""))
-		root.set_icon_modulate(0, Color.LIGHT_BLUE)
-
-		if _col_cache.has(rp):
-			root.collapsed = _col_cache[rp][1]
-		else:
-			_col_cache[rp] = [true, false]
-			root.collapsed = false
-		_col_cache[rp][0] = true
+		root = _create_root()
 
 	var tmp : TreeItem = root.get_first_child()
 	var tmp_path : String = "res://"
 	var base_color : Color = Color.TRANSPARENT
 
 	var data : Dictionary = ProjectSettings.get_setting("file_customization/folder_colors")
+
+	if _col_cache.has(tmp_path):
+		root.collapsed = _col_cache[tmp_path][1]
+	else:
+		_col_cache[tmp_path] = [true, false]
+		root.collapsed = false
 
 	for x : String in path.trim_prefix("res://").split("/", false, 0):
 		tmp_path = tmp_path.path_join(x)
@@ -308,7 +460,7 @@ func add_item(path : String) -> void: #, save : bool = true) -> void:
 			tmp.set_icon(0, _get_icon(tmp_path))
 			if tmp_path.get_extension() == "" and !tmp_path.ends_with("."):
 				tmp.set_icon_modulate(0, Color.LIGHT_BLUE)
-			tmp.set_custom_bg_color(0, base_color)
+			tmp.set_custom_bg_color(0, base_color) #FIXME COLOR
 			tmp.set_metadata(0, tmp_path)
 
 			if _col_cache.has(tmp_path):
@@ -326,6 +478,57 @@ func add_item(path : String) -> void: #, save : bool = true) -> void:
 		else:
 			root = tmp
 			tmp = tmp.get_first_child()
+
+# Add recursive folders/files
+func add_item_scoped(path : String, tree : TreeItem, data : Dictionary, base_color : Color = Color.SKY_BLUE) -> void:
+	var efs : EditorFileSystem = EditorInterface.get_resource_filesystem()
+	var fs : EditorFileSystemDirectory = efs.get_filesystem_path(path)
+	if !fs:return
+	if base_color != Color.SKY_BLUE:
+		base_color.a = max(base_color.a  - 0.15, 0.05)
+	for x : int in fs.get_subdir_count():
+		var new_path : String = fs.get_subdir(x).get_path()
+		var new_tree : TreeItem = tree.create_child()
+		var parsed_path : String = new_path.trim_suffix("/")
+		var fname : String = parsed_path.get_file()
+		new_tree.set_text(0, fname)
+		new_tree.set_metadata(0, parsed_path)
+		new_tree.set_icon(0, _get_icon(parsed_path))
+		new_tree.set_custom_bg_color(0, base_color) #FIXME COLOR
+		if _col_cache.has(parsed_path):
+			new_tree.collapsed = _col_cache[parsed_path][1]
+		else:
+			_col_cache[parsed_path] = [true, true]
+			new_tree.collapsed = true
+		_col_cache[parsed_path][0] = true
+		var current_color : Color = base_color
+		if data.has(new_path):
+			current_color = Color.from_string(data[new_path], Color.SKY_BLUE)
+			if current_color != Color.SKY_BLUE:
+				var nw : Color = current_color.lightened(0.25)
+				nw.a = 0.85
+				new_tree.set_icon_modulate(0, nw) #FIXME: COLOR
+		else:
+			var b : Color = base_color
+			b.a = 1.0
+			new_tree.set_icon_modulate(0, b) #FIXME: COLOR
+		current_color.a = min(current_color.a, 0.25)
+		add_item_scoped(parsed_path, new_tree, data, current_color)
+	for x : int in fs.get_file_count():
+		var current_color : Color = base_color
+		var new_path : String = fs.get_file_path(x)
+		var new_tree : TreeItem = tree.create_child()
+		var fname : String = new_path.trim_suffix("/").get_file()
+		new_tree.set_text(0, fname)
+		new_tree.set_metadata(0, new_path)
+		new_tree.set_icon(0, _get_icon(new_path))
+		if data.has(new_path):
+			current_color = Color.from_string(data[new_path], Color.SKY_BLUE)
+			if current_color != Color.SKY_BLUE:
+				current_color = current_color.lightened(0.25)
+
+		current_color.a = min(current_color.a, 0.25)
+		new_tree.set_custom_bg_color(0, current_color) #FIXME COLOR
 
 #region interactions
 ## Double click interaction
@@ -354,7 +557,13 @@ func _physics_process(_delta: float) -> void:
 	_chk += _delta
 	if _chk < 0.35:return
 	_chk = 0.0
-	if !visible:return
+	if !visible:
+		set_physics_process(false)
+		return
 	var n_SHA256 : String = FileAccess.get_sha256(FAV_FOLDER)
 	if _SHA256 != n_SHA256:
+		var fs : EditorFileSystem = EditorInterface.get_resource_filesystem()
+		if !fs or fs.is_scanning(): return
+		for k : Variant in _col_cache.keys():
+			_col_cache[k][0] = false
 		_update(true)
