@@ -15,7 +15,7 @@ Displays all favorites in a separate dock.
 ## Still needs refinement
 * Menu RMB File system command (Right click) with select/multi-select.
 * Auto-Refresh.
-* Folder colors.
+* ~~Folder colors.~~
 
 # Previews
 Youtube: https://youtu.be/b0Bxgp0OIJo
