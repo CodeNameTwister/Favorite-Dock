@@ -1,13 +1,12 @@
 @tool
 extends EditorPlugin
-#{
-	#"type": "plugin",
-	#"codeRepository": "https://github.com/CodeNameTwister",
-	#"description": "Favorite dock addon for godot 4",
-	#"license": "https://spdx.org/licenses/MIT",
-	#"name": "Twister",
-	#"version": "1.0.0"
-#}
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+#	Script Spliter
+#	https://github.com/CodeNameTwister/Favorite-Dock
+#
+#	Script Spliter addon for godot 4
+#	author:		"Twister"
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 var dock : Control = null
 
 func _enter_tree() -> void:

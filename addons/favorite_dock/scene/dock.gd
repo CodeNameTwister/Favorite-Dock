@@ -1,13 +1,12 @@
 @tool
 extends Control
-#{
-	#"type": "plugin",
-	#"codeRepository": "https://github.com/CodeNameTwister",
-	#"description": "Favorite dock addon for godot 4",
-	#"license": "https://spdx.org/licenses/MIT",
-	#"name": "Twister",
-	#"version": "1.1.2"
-#}
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+#	Script Spliter
+#	https://github.com/CodeNameTwister/Favorite-Dock
+#
+#	Script Spliter addon for godot 4
+#	author:		"Twister"
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 @export var tree : Tree
 
 var finish_update : bool = true
@@ -19,6 +18,7 @@ var _dbg_path : String = ""
 var _filter_by_global_scope : bool = true
 
 const FAV_FOLDER : String = "res://.godot/editor/favorites"
+const DEFAULT_COLOR : Color = Color(0.608, 0.811, 0.986, 1.0)
 
 func clear() -> void:
 	tree.clear()
@@ -145,6 +145,28 @@ func _explorer(path : String, buffer : PackedStringArray) -> void:
 		if !buffer.has(new_path):
 			buffer.append(new_path)
 
+func _parse_color(color : String) -> Color:
+	match color:
+		"red":
+			return Color(1.0, 0.271, 0.271, 1.0)
+		"orange":
+			return Color(1.0, 0.561, 0.271, 1.0)
+		"yellow":
+			return Color(1.0, 0.89, 0.271, 1.0)
+		"green":
+			return Color(0.502, 1.0, 0.271, 1.0)
+		"teal":
+			return Color(0.271, 1.0, 0.635, 1.0)
+		"blue":
+			return Color(0.271, 0.843, 1.0, 1.0)
+		"purple":
+			return Color(0.502, 0.271, 1.0, 1.0)
+		"pink":
+			return Color(1.0, 0.271, 0.588, 1.0)
+		"gray":
+			return Color(0.616, 0.616, 0.616, 1.0)
+	return Color.from_string(color, DEFAULT_COLOR)
+
 ## Refresh dock
 func _update(force : bool = false) -> void:
 	if !visible and !force:return
@@ -173,11 +195,12 @@ func _update(force : bool = false) -> void:
 				if tree_root == null:
 					tree_root = _create_root()
 				var data : Dictionary = ProjectSettings.get_setting("file_customization/folder_colors",{})
-				var base_color : Color = Color.SKY_BLUE
+				var base_color : Color =  DEFAULT_COLOR
 				for new_path : String in buffer:
 					if data.has(new_path):
-						base_color = Color.from_string(data[new_path], Color.SKY_BLUE)
-					base_color.a = 0.15
+						base_color = _parse_color(data[new_path])
+					else:
+						base_color = DEFAULT_COLOR
 					#region root_item
 					var new_tree : TreeItem = tree_root.create_child()
 					var parsed_path : String = new_path.trim_suffix("/")
@@ -185,7 +208,11 @@ func _update(force : bool = false) -> void:
 					new_tree.set_text(0, fname)
 					new_tree.set_metadata(0, parsed_path)
 					new_tree.set_icon(0, _get_icon(parsed_path))
-					new_tree.set_custom_bg_color(0, base_color) #FIXME: COLOR
+
+					base_color.a = DEFAULT_COLOR.a
+					if base_color != DEFAULT_COLOR:
+						base_color.a = 0.13
+						new_tree.set_custom_bg_color(0, base_color)
 					if _col_cache.has(parsed_path):
 						new_tree.collapsed = _col_cache[parsed_path][1]
 					else:
@@ -194,17 +221,16 @@ func _update(force : bool = false) -> void:
 					_col_cache[parsed_path][0] = true
 					var current_color : Color = base_color
 					if data.has(new_path):
-						current_color = Color.from_string(data[new_path], Color.SKY_BLUE)
-						if current_color != Color.SKY_BLUE:
-							var nw : Color = current_color.lightened(0.25)
-							current_color = nw
-							nw.a = 0.85
-							new_tree.set_icon_modulate(0, nw) #FIXME: COLOR
+						current_color = _parse_color(data[new_path])
+						if current_color !=  DEFAULT_COLOR:
+							var new_color : Color = current_color
+							current_color = new_color
+							new_color.a = 1.0
+							new_tree.set_icon_modulate(0, new_color)
 					else:
-						var b : Color = base_color
-						b.a = 1.0
-						new_tree.set_icon_modulate(0, b) #FIXME: COLOR
-					current_color.a = min(current_color.a, 0.25)
+						var default : Color = base_color
+						default.a = 1.0
+						new_tree.set_icon_modulate(0, default)
 					#endregion
 					add_item_scoped(parsed_path, new_tree, data, current_color)
 			for x : String in _col_cache.keys():
@@ -247,17 +273,21 @@ func _get_popup_commands(path : String = "") -> Popup:
 			return pops[0]
 	return null
 
+func _get_pops() -> Array[Popup]:
+	var pops : Array[Popup] = []
+	var fs : FileSystemDock = EditorInterface.get_file_system_dock()
+	if fs.get_child_count() > 0:
+		var expect : int = 2
+		for p : Node in fs.get_children():
+			if p is Popup:
+				pops.append(p)
+				expect -= 1
+				if expect < 1:break
+	return pops
+
 func _rmb_menu_init() -> void:
 	if fav_tree:
-		var pops : Array[Popup] = []
-		var fs : FileSystemDock = EditorInterface.get_file_system_dock()
-		if fs.get_child_count() > 0:
-			var expect : int = 2
-			for p : Node in fs.get_children():
-				if p is Popup:
-					pops.append(p)
-					expect -= 1
-					if expect < 1:break
+		var pops : Array[Popup] = _get_pops()
 		var res : TreeItem = fav_tree.get_root().get_first_child().get_next()
 		fav_tree.set_selected(res,0)
 		fav_tree.item_mouse_selected.emit(Vector2.ZERO, 2)
@@ -266,8 +296,9 @@ func _rmb_menu_init() -> void:
 				p.hide()
 
 ## RMB Tree command
-func _item_mouse_selected(mouse_position: Vector2i, mouse_button_index: int) -> void:
+func _tree_item_mouse_selected(mouse_position: Vector2i, mouse_button_index: int) -> void:
 	if mouse_button_index == 2:
+		return
 		var item : TreeItem = tree.get_selected()
 		if item == null:return
 		var path : String = item.get_metadata(0)
@@ -296,6 +327,102 @@ func _update_gui() -> void:
 
 func _on_wnd() -> void:set_physics_process(true)
 func _out_wnd() -> void:set_physics_process(false)
+
+func _button_clicked(item: TreeItem, column: int, id: int, mouse_button_index: int) -> void:
+	fav_tree.button_clicked.emit(item, column, id, mouse_button_index)
+
+func _cell_selected() -> void:
+	fav_tree.cell_selected.emit()
+
+func _check_propagated_to_item(item: TreeItem, column: int) -> void:
+	fav_tree.check_propagated_to_item.emit(item, column)
+
+func _column_title_clicked(column: int, mouse_button_index: int) -> void:
+	fav_tree.column_title_clicked.emit(column, mouse_button_index)
+
+func _custom_item_clicked(mouse_button_index: int) -> void:
+	fav_tree.custom_item_clicked.emit(mouse_button_index)
+
+func _custom_popup_edited(arrow_clicked: bool) -> void:
+	fav_tree.custom_popup_edited.emit(arrow_clicked)
+
+func _empty_clicked(click_position: Vector2, mouse_button_index: int) -> void:
+	var vp : Viewport = get_viewport()
+	if vp:
+		click_position = vp.get_mouse_position()
+	fav_tree.empty_clicked.emit(click_position, mouse_button_index)
+
+func _item_activated() -> void:
+	fav_tree.item_activated.emit()
+
+func _item_collapsed(item: TreeItem) -> void:
+	fav_tree.item_collapsed.emit(item)
+
+func _item_edited() -> void:
+	fav_tree.item_edited.emit()
+
+func _item_icon_double_clicked() -> void:
+	fav_tree.item_icon_double_clicked.emit()
+
+func _item_mouse_selected(mouse_position: Vector2, mouse_button_index: int) -> void:
+	var vp : Viewport = get_viewport()
+	if vp:
+		mouse_position = vp.get_mouse_position()
+
+	var it : TreeItem = tree.get_selected()
+	var root : TreeItem = fav_tree.get_root()
+	var path : String = str(it.get_metadata(0)).trim_prefix("res://")
+
+	var current : String = "res://"
+
+	var tree_item : TreeItem = root
+	for p : String in path.split("/"):
+		current = current.path_join(p)
+		var next : TreeItem = tree_item.get_first_child()
+		while next != null:
+			var st : String = next.get_metadata(0)
+			if st == current:
+				break
+			next = next.get_next()
+		if next:
+			tree_item = next
+			continue
+
+	if tree_item:
+		fav_tree.set_selected(tree_item, 0)
+	else:
+		return
+
+	fav_tree.item_mouse_selected.emit(mouse_position, mouse_button_index)
+	var pops : Array[Popup] = _get_pops()
+	for p : Popup in pops:
+		var half : Vector2 = p.size / 2.0
+		p.position = mouse_position - Vector2(0, half.y + half.y / 6.0)
+
+func _item_selected() -> void:
+	fav_tree.item_selected.emit()
+
+func _multi_selected(item: TreeItem, column: int, selected: bool) -> void:
+	fav_tree.multi_selected.emit(item, column, selected)
+
+func _nothing_selected() -> void:
+	fav_tree.nothing_selected.emit()
+
+func _reconnect(a : Tree) -> void:
+	for _signal : Signal in [
+		a.button_clicked, a.cell_selected, a.check_propagated_to_item,
+		a.column_title_clicked, a.custom_item_clicked, a.custom_popup_edited,
+		a.empty_clicked, a.item_activated, a.item_collapsed, a.item_edited,
+		a.item_icon_double_clicked, a.item_mouse_selected, a.item_selected,
+		a.multi_selected, a.nothing_selected
+		]:
+		var _name : StringName = _signal.get_name()
+		a.connect(_name, Callable(self, str("_",_name)))
+		#for cn : Dictionary in _signal.get_connections():
+			#var callable : Callable = cn["callable"]
+			#if !callable.is_valid():continue
+			#if !b.is_connected(_name, callable):
+				#b.connect(_name, callable)
 
 func _load_cfg() -> void:
 	if FileAccess.file_exists("user://editor/favorite_dock.cfg"):
@@ -337,8 +464,11 @@ func _ready() -> void:
 
 	tree.allow_reselect = true
 	tree.allow_rmb_select = true
-	tree.item_mouse_selected.connect(_item_mouse_selected)
+	tree.select_mode = Tree.SELECT_MULTI
+	tree.item_mouse_selected.connect(_tree_item_mouse_selected)
 	tree.item_activated.connect(_select)
+
+	_reconnect(tree)
 
 	# FAV ICON
 	var tittle_icon : TextureRect = $TittleBox/FavText
@@ -403,7 +533,7 @@ func _create_root() -> TreeItem:
 		root.set_text(0, rp)
 		root.set_metadata(0, rp)
 		root.set_icon(0, _get_icon(""))
-		root.set_icon_modulate(0, Color.LIGHT_BLUE)
+		root.set_icon_modulate(0, DEFAULT_COLOR)
 	else:
 		var fav : TreeItem = fav_tree.get_root().get_first_child()
 		if fav:
@@ -414,7 +544,7 @@ func _create_root() -> TreeItem:
 			root.set_metadata(0, "")
 			if dicn == ficn:
 				base_gui.get_theme_icon("Folder", "EditorIcons")
-				root.set_icon_modulate(0, Color.LIGHT_BLUE)
+				root.set_icon_modulate(0,  DEFAULT_COLOR)
 			root.set_icon(0, ficn)
 	return root
 
@@ -434,9 +564,11 @@ func add_item(path : String) -> void: #, save : bool = true) -> void:
 
 	var tmp : TreeItem = root.get_first_child()
 	var tmp_path : String = "res://"
-	var base_color : Color = Color.TRANSPARENT
+	var base_color : Color = DEFAULT_COLOR
 
 	var data : Dictionary = ProjectSettings.get_setting("file_customization/folder_colors")
+
+	var custom : bool = false
 
 	if _col_cache.has(tmp_path):
 		root.collapsed = _col_cache[tmp_path][1]
@@ -446,10 +578,15 @@ func add_item(path : String) -> void: #, save : bool = true) -> void:
 
 	for x : String in path.trim_prefix("res://").split("/", false, 0):
 		tmp_path = tmp_path.path_join(x)
-		base_color.a = max(base_color.a - 0.05, 0.05)
 		if data.has(tmp_path.path_join("/")):
-			base_color = Color.from_string(data[tmp_path.path_join("/")], Color.TRANSPARENT)
-			base_color.a = 0.1
+			base_color = _parse_color(data[tmp_path.path_join("/")])
+			base_color.a = 0.13
+			custom = true
+		else:
+			if !custom:
+				base_color.a = 0.0
+			else:
+				base_color.a = 0.1
 		while tmp != null:
 			if tmp.get_text(0) == x:
 				break
@@ -459,8 +596,8 @@ func add_item(path : String) -> void: #, save : bool = true) -> void:
 			tmp.set_text(0, x)
 			tmp.set_icon(0, _get_icon(tmp_path))
 			if tmp_path.get_extension() == "" and !tmp_path.ends_with("."):
-				tmp.set_icon_modulate(0, Color.LIGHT_BLUE)
-			tmp.set_custom_bg_color(0, base_color) #FIXME COLOR
+				tmp.set_icon_modulate(0,  DEFAULT_COLOR)
+			tmp.set_custom_bg_color(0, base_color)
 			tmp.set_metadata(0, tmp_path)
 
 			if _col_cache.has(tmp_path):
@@ -470,22 +607,21 @@ func add_item(path : String) -> void: #, save : bool = true) -> void:
 				tmp.collapsed = true
 			_col_cache[tmp_path][0] = true
 			if !FileAccess.file_exists(tmp_path):
-				var c : Color = base_color
-				c.a = 0.8
-				c = c.lightened(0.35)
-				tmp.set_icon_modulate(0, c)
+				var icon_color : Color = base_color
+				icon_color.a = 1.0
+				tmp.set_icon_modulate(0, icon_color)
 			root = tmp
 		else:
 			root = tmp
 			tmp = tmp.get_first_child()
 
 # Add recursive folders/files
-func add_item_scoped(path : String, tree : TreeItem, data : Dictionary, base_color : Color = Color.SKY_BLUE) -> void:
+func add_item_scoped(path : String, tree : TreeItem, data : Dictionary, base_color : Color =  DEFAULT_COLOR) -> void:
 	var efs : EditorFileSystem = EditorInterface.get_resource_filesystem()
 	var fs : EditorFileSystemDirectory = efs.get_filesystem_path(path)
 	if !fs:return
-	if base_color != Color.SKY_BLUE:
-		base_color.a = max(base_color.a  - 0.15, 0.05)
+	if base_color != DEFAULT_COLOR:
+		base_color.a = 0.1
 	for x : int in fs.get_subdir_count():
 		var new_path : String = fs.get_subdir(x).get_path()
 		var new_tree : TreeItem = tree.create_child()
@@ -494,7 +630,11 @@ func add_item_scoped(path : String, tree : TreeItem, data : Dictionary, base_col
 		new_tree.set_text(0, fname)
 		new_tree.set_metadata(0, parsed_path)
 		new_tree.set_icon(0, _get_icon(parsed_path))
-		new_tree.set_custom_bg_color(0, base_color) #FIXME COLOR
+
+		base_color.a = DEFAULT_COLOR.a
+		if base_color != DEFAULT_COLOR:
+			base_color.a = 0.1
+			new_tree.set_custom_bg_color(0, base_color)
 		if _col_cache.has(parsed_path):
 			new_tree.collapsed = _col_cache[parsed_path][1]
 		else:
@@ -503,16 +643,18 @@ func add_item_scoped(path : String, tree : TreeItem, data : Dictionary, base_col
 		_col_cache[parsed_path][0] = true
 		var current_color : Color = base_color
 		if data.has(new_path):
-			current_color = Color.from_string(data[new_path], Color.SKY_BLUE)
-			if current_color != Color.SKY_BLUE:
-				var nw : Color = current_color.lightened(0.25)
-				nw.a = 0.85
-				new_tree.set_icon_modulate(0, nw) #FIXME: COLOR
+			current_color = _parse_color(data[new_path])
+			if current_color !=  DEFAULT_COLOR:
+				var new_color : Color = current_color
+				new_color.a = 1.0
+				new_tree.set_icon_modulate(0, new_color)
+				new_color.a = 0.13
+				new_tree.set_custom_bg_color(0, new_color)
 		else:
 			var b : Color = base_color
 			b.a = 1.0
-			new_tree.set_icon_modulate(0, b) #FIXME: COLOR
-		current_color.a = min(current_color.a, 0.25)
+			new_tree.set_icon_modulate(0, b)
+		current_color.a = max(min(current_color.a, 0.25), 0.1)
 		add_item_scoped(parsed_path, new_tree, data, current_color)
 	for x : int in fs.get_file_count():
 		var current_color : Color = base_color
@@ -523,12 +665,12 @@ func add_item_scoped(path : String, tree : TreeItem, data : Dictionary, base_col
 		new_tree.set_metadata(0, new_path)
 		new_tree.set_icon(0, _get_icon(new_path))
 		if data.has(new_path):
-			current_color = Color.from_string(data[new_path], Color.SKY_BLUE)
-			if current_color != Color.SKY_BLUE:
-				current_color = current_color.lightened(0.25)
-
-		current_color.a = min(current_color.a, 0.25)
-		new_tree.set_custom_bg_color(0, current_color) #FIXME COLOR
+			current_color = _parse_color(data[new_path])
+		else:
+			current_color = base_color
+		if current_color != DEFAULT_COLOR:
+			current_color.a = 0.1
+			new_tree.set_custom_bg_color(0, current_color)
 
 #region interactions
 ## Double click interaction
