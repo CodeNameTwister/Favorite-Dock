@@ -3,6 +3,8 @@ Displays all favorites in a separate dock.
 
 [![Godot Engine 4.3](https://img.shields.io/badge/Godot_Engine-4.x-blue)](https://godotengine.org/) ![ToolHack](https://img.shields.io/badge/Tool-Addon-green) ![Copyrights License](https://img.shields.io/badge/License-MIT-blue)
 
+>[!NOTE]
+>This is Separated Dock version, the embedded version is in [Github: Favorite-Dock-Embedded](https://github.com/CodeNameTwister/Favorite-Dock-Embedded)
 
 ## Features
 * Add a separate dock with all favorites folders/file setted.
